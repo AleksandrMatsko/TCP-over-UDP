@@ -12,16 +12,16 @@ public class RDTServer extends RDTSocket implements Runnable {
     private final Object lock = new Object();
     private int seqNumber;
     private int ackNumber;
-    private final int srcPort;
+    private final int clientPort;
     private final SortedSet<RDTPacket> receivedPackets;
     private final ArrayList<String> dataParts;
     private boolean isRunning = false;
 
-    public RDTServer(int srcPort, int serverPort, double lossChance, int timeout) throws SocketException {
+    public RDTServer(int clientPort, int serverPort, double lossChance, int timeout) throws SocketException {
         super(serverPort, lossChance, timeout);
         receivedPackets = new TreeSet<>();
         dataParts = new ArrayList<>();
-        this.srcPort = srcPort;
+        this.clientPort = clientPort;
     }
 
     private void handshake() throws SocketException {
@@ -30,7 +30,7 @@ public class RDTServer extends RDTSocket implements Runnable {
             seqNumber = syn.getAckNumber();
             ackNumber = syn.getSeqNumber() + 1;
             RDTPacket ackSyn = new RDTPacket(true, true, false, seqNumber, ackNumber);
-            sendRDTPacket(ackSyn, srcPort);
+            sendRDTPacket(ackSyn, clientPort);
         }
         else {
             throw new SocketException("invalid packet received during handshake()");
@@ -53,7 +53,7 @@ public class RDTServer extends RDTSocket implements Runnable {
             if (rdtPacket != null) {
                 if (rdtPacket.getSeqNumber() < ackNumber) {
                     RDTPacket nak = new RDTPacket(true, false, false, seqNumber, rdtPacket.getSeqNumber());
-                    sendRDTPacket(nak, srcPort);
+                    sendRDTPacket(nak, clientPort);
                 }
                 else {
                     receivedPackets.add(rdtPacket);
@@ -77,12 +77,12 @@ public class RDTServer extends RDTSocket implements Runnable {
 
     private void disconnect() throws SocketException {
         RDTPacket ackFin = new RDTPacket(true, false, false, seqNumber, ackNumber);
-        sendRDTPacket(ackFin, srcPort);
+        sendRDTPacket(ackFin, clientPort);
 
         seqNumber += 1;
 
         RDTPacket servFin = new RDTPacket(false, false, true, seqNumber, ackNumber);
-        sendRDTPacket(servFin, srcPort);
+        sendRDTPacket(servFin, clientPort);
 
         RDTPacket ack = receiveRDTPacket();
         if (!ack.isACK()) {
@@ -122,7 +122,7 @@ public class RDTServer extends RDTSocket implements Runnable {
                     }
                     else {
                         RDTPacket ack = new RDTPacket(true, false, false, seqNumber, ackNumber);
-                        sendRDTPacket(ack, srcPort);
+                        sendRDTPacket(ack, clientPort);
                     }
                 }
 

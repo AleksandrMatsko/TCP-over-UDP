@@ -11,9 +11,9 @@ public class Main {
                 "first2", "second2", "third2", "fourth2", "fifth2", "sixth2", "seventh2", "eighth2", "ninth2", "tenth2"};
 
         try {
-            RDTClient rdtClient = new RDTClient(15000, 15001, 0.2,
+            RDTClient rdtClient = new RDTClient(15000, 15001, 0.8,
                     1000, dataToSend);
-            RDTServer rdtServer = new RDTServer(15000, 15001, 0.2, 1000);
+            RDTServer rdtServer = new RDTServer(15000, 15001, 0.8, 1000);
             Thread clientThread = new Thread(rdtClient);
             Thread serverThread = new Thread(rdtServer);
             serverThread.start();

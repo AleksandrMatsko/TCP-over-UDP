@@ -8,7 +8,7 @@ import java.util.LinkedList;
 import java.util.Map;
 
 public class RDTClient extends RDTSocket implements Runnable {
-    private final int dstPort;
+    private final int serverPort;
     private final int timeout;
     private int seqNumber;
     private int ackNumber;
@@ -18,13 +18,13 @@ public class RDTClient extends RDTSocket implements Runnable {
     private int WINDOW_SIZE;
 
 
-    public RDTClient(int clientPort, int dstPort, double lossChance, int timeout, String[] dataToSend) throws SocketException {
+    public RDTClient(int clientPort, int serverPort, double lossChance, int timeout, String[] dataToSend) throws SocketException {
         super(clientPort, lossChance, timeout);
 
         System.err.println("Size of dataToSend: " + dataToSend.length);
 
 
-        this.dstPort = dstPort;
+        this.serverPort = serverPort;
         this.timeout = timeout;
         this.dataToSend = dataToSend;
         timeouts = new HashMap<>();
@@ -34,14 +34,14 @@ public class RDTClient extends RDTSocket implements Runnable {
 
     private void handshake() throws SocketException {
         RDTPacket synPacket = new RDTPacket(false, true, false, seqNumber, ackNumber);
-        sendRDTPacket(synPacket, dstPort);
+        sendRDTPacket(synPacket, serverPort);
 
         RDTPacket synACKPacket = receiveRDTPacket();
         if (synACKPacket.isACK() && synACKPacket.isSyn() && synACKPacket.getAckNumber() == seqNumber + 1) {
             seqNumber = synACKPacket.getAckNumber();
             ackNumber = synACKPacket.getSeqNumber() + 1;
             RDTPacket ackPacket = new RDTPacket(true, false, false, seqNumber, ackNumber);
-            sendRDTPacket(ackPacket, dstPort);
+            sendRDTPacket(ackPacket, serverPort);
             System.err.println("Client: connection established");
             System.err.println("Client: seq = " + seqNumber + ", ack = " + ackNumber);
         }
@@ -52,7 +52,7 @@ public class RDTClient extends RDTSocket implements Runnable {
 
     private void disconnect() throws SocketException {
         RDTPacket finPacket = new RDTPacket(false, false, true, seqNumber, ackNumber);
-        sendRDTPacket(finPacket, dstPort);
+        sendRDTPacket(finPacket, serverPort);
 
         RDTPacket first = receiveRDTPacket();
         seqNumber = first.getAckNumber();
@@ -63,7 +63,7 @@ public class RDTClient extends RDTSocket implements Runnable {
         ackNumber = second.getSeqNumber() + 1;
         if ((first.isACK() && second.isFin()) || (first.isFin() && second.isACK())) {
             RDTPacket ack = new RDTPacket(true, false, false, seqNumber, ackNumber);
-            sendRDTPacket(ack, dstPort);
+            sendRDTPacket(ack, serverPort);
         }
         else {
             throw new SocketException("invalid server fin");
@@ -79,7 +79,7 @@ public class RDTClient extends RDTSocket implements Runnable {
             if (rdtPacket == null) {
                 return;
             }
-            sendRDTPacket(rdtPacket, dstPort);
+            sendRDTPacket(rdtPacket, serverPort);
             timeouts.put(rdtPacket, System.currentTimeMillis());
         }
     }
@@ -91,7 +91,7 @@ public class RDTClient extends RDTSocket implements Runnable {
                 long currentTime = System.currentTimeMillis();
                 for (Map.Entry<RDTPacket, Long> entry : timeouts.entrySet()) {
                     if (currentTime - entry.getValue() >= timeout) {
-                        sendRDTPacket(entry.getKey(), dstPort);
+                        sendRDTPacket(entry.getKey(), serverPort);
                     }
                 }
             }
